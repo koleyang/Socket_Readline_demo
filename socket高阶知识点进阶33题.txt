@@ -304,3 +304,79 @@ this.write(JSON.stringify({ type: 'emit', data: `大家好，我是${getMac()}` 
 function isBuffer(str) {
     return str && typeof str === "object" && Buffer.isBuffer(str)
 }
+
+[end]
+
+
+
+[node全局内置模块readline--cmd输入框模块的使用]
+主要针对客户端来测试、使用readline模块
+24、测试小文件----readline_input.js:
+const readline = require('readline')
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+const say = () => {
+    rl.question('请输入：', inputStr => {
+        inputStr != 'bye' ? say() : rl.close();
+    });
+}
+say();
+
+
+-------------------把readline添加到socketClient.js客户端代码中--------------------
+需求逻辑是：客户端靠cmd输入框输入消息，并通过服务端广播消息
+25、客户端头代码
+const net = require('net');
+const validator = require('validator');
+const host = '127.0.0.1';
+const port = 9009;
+const readline = require('readline')
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+26、客户端封装say()方法代码
+const say = (client) => {
+    rl.question('请输入：', inputStr => {
+        client.write(JSON.stringify({ type: 'emit', data: inputStr }));
+        inputStr != 'bye' ? say(client) : rl.close();
+    });
+}
+
+27、客户端调用say()方法场景
+ this.on('data', res => { // 这个事件监听----可以证明this指向的就是client对象
+        try {
+            let resJson = res.toString();
+            if (validator.isJSON(resJson)) {
+                console.log('客户端收到服务端JSON格式消息 =>', JSON.parse(resJson));
+                console.log('客户端收到服务端JSON格式消息 data数据：=>', JSON.parse(resJson).data);
+                // 接收到消息后调用say()方法来输入消息回复
+                say(this);
+            }else {
+                console.log('客户端收到服务端其它格式消息 =>', res.toString());
+            }
+            
+        } catch (error) {
+            console.log('接收服务端消息报错 =>', error);
+        }
+    })
+[解析]:
+①、因为之前socket服务端和客户端已经形成了多端通信的架构模型，所以这里再多添加一个say()方法，只是换一种
+方式发送消息而已，锦上添花，服务端广播，客户端接收的架构模式还是直接可用的。
+
+
+
+
+
+
+
+
+
+
+[end]
